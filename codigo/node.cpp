@@ -19,6 +19,7 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
 
     //TODO: Enviar mensaje TAG_CHAIN_HASH
 
+
     Block *blockchain = new Block[VALIDATION_BLOCKS];
 
     //TODO: Recibir mensaje TAG_CHAIN_RESPONSE
@@ -41,26 +42,28 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //necesariamente eso lo agrega a la cadena
         node_blocks[string(rBlock->block_hash)] = *rBlock;
 
-        //TODO: Si el índice del bloque recibido es 1
+        //Si el índice del bloque recibido es 1
         //y mí último bloque actual tiene índice 0,
         //entonces lo agrego como nuevo último.
         if (rBlock->index == 1 && last_block_in_chain->index == 0) {
             *last_block_in_chain = *rBlock;
+            total_nodes++;
             printf("[%d] Agregado a la lista bloque con index %d enviado por %d \n", mpi_rank, rBlock->index,status->MPI_SOURCE);
             return true;
         }
 
-        //TODO: Si el índice del bloque recibido es
+        //Si el índice del bloque recibido es
         //el siguiente a mí último bloque actual,
         //y el bloque anterior apuntado por el recibido es mí último actual,
         //entonces lo agrego como nuevo último.
         if ((rBlock->index == last_block_in_chain->index + 1) && rBlock->previous_block_hash == last_block_in_chain->block_hash) {
             *last_block_in_chain = *rBlock;
+            total_nodes++;
             printf("[%d] Agregado a la lista bloque con index %d enviado por %d \n", mpi_rank, rBlock->index,status->MPI_SOURCE);
             return true;
         }
 
-        //TODO: Si el índice del bloque recibido es
+        //Si el índice del bloque recibido es
         //el siguiente a mí último bloque actual,
         //pero el bloque anterior apuntado por el recibido no es mí último actual,
         //entonces hay una blockchain más larga que la mía.
@@ -70,7 +73,7 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
             return res;
         }
 
-        //TODO: Si el índice del bloque recibido es igual al índice de mi último bloque actual,
+        //Si el índice del bloque recibido es igual al índice de mi último bloque actual,
         //entonces hay dos posibles forks de la blockchain pero mantengo la mía
         if (rBlock->index == last_block_in_chain->index) {
             printf("[%d] Conflicto suave: Conflicto de branch (%d) contra %d \n", mpi_rank, rBlock->index,
@@ -78,7 +81,7 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
             return false;
         }
 
-        //TODO: Si el índice del bloque recibido es anterior al índice de mi último bloque actual,
+        //Si el índice del bloque recibido es anterior al índice de mi último bloque actual,
         //entonces lo descarto porque asumo que mi cadena es la que está quedando preservada.
         if (rBlock->index < last_block_in_chain->index) {
             printf("[%d] Conflicto suave: Descarto el bloque (%d vs %d) contra %d \n", mpi_rank, rBlock->index,
@@ -86,7 +89,7 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
             return false;
         }
 
-        //TODO: Si el índice del bloque recibido está más de una posición adelantada a mi último bloque actual,
+        //Si el índice del bloque recibido está más de una posición adelantada a mi último bloque actual,
         //entonces me conviene abandonar mi blockchain actual
         if (rBlock->index > last_block_in_chain->index+1) {
             printf("[%d] Perdí la carrera por varios contra %d \n", mpi_rank, status->MPI_SOURCE);
@@ -108,14 +111,13 @@ void broadcast_block(const Block *block) {
 }
 
 //Proof of work
-//TODO: Advertencia: puede tener condiciones de carrera
+//Advertencia: puede tener condiciones de carrera
 void *proof_of_work(void *ptr) {
     pthread_mutex_t * lock = (pthread_mutex_t*) ptr;
     string hash_hex_str;
     Block block;
     unsigned int mined_blocks = 0;
     while (true) {
-
 
         block = *last_block_in_chain;
 
@@ -144,7 +146,7 @@ void *proof_of_work(void *ptr) {
                 node_blocks[hash_hex_str] = *last_block_in_chain;
                 printf("[%d] Agregué un producido con index %d \n", mpi_rank, last_block_in_chain->index);
 
-                //TODO: Mientras comunico, no responder mensajes de nuevos nodos
+                //Mientras comunico, no responder mensajes de nuevos nodos
                 broadcast_block(last_block_in_chain);
             }
             pthread_mutex_unlock(lock);
@@ -185,8 +187,6 @@ int node() {
 
     while (true) {
         pthread_mutex_lock(&lock);
-
-
 
         //TODO: Recibir mensajes de otros nodos
 
