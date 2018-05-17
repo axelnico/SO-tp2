@@ -4,7 +4,7 @@ MPIROOT = /usr
 
 CFLAGS+= -Wall -std=c++11 -pthread -g $(INCL)
 CC=gcc
-MPICC=  $(MPIROOT)/bin/mpic++
+MPICC=  /usr/local/bin/mpic++
 INCL= -I$(MPIROOT)/include
 SRCS= node.cpp block.cpp blockchain.cpp
 BIN= blockchain

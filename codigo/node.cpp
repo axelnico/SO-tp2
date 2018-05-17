@@ -45,8 +45,7 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //y mí último bloque actual tiene índice 0,
         //entonces lo agrego como nuevo último.
         if (rBlock->index == 1 && last_block_in_chain->index == 0) {
-            rBlock->previous_block_hash = last_block_in_chain->block_hash;
-            last_block_in_chain = rBlock;
+            *last_block_in_chain = *rBlock;
             printf("[%d] Agregado a la lista bloque con index %d enviado por %d \n", mpi_rank, rBlock->index,status->MPI_SOURCE);
             return true;
         }
@@ -56,7 +55,7 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //y el bloque anterior apuntado por el recibido es mí último actual,
         //entonces lo agrego como nuevo último.
         if ((rBlock->index == last_block_in_chain->index + 1) && rBlock->previous_block_hash == last_block_in_chain->block_hash) {
-            last_block_in_chain = rBlock;
+            *last_block_in_chain = *rBlock;
             printf("[%d] Agregado a la lista bloque con index %d enviado por %d \n", mpi_rank, rBlock->index,status->MPI_SOURCE);
             return true;
         }
@@ -111,7 +110,7 @@ void broadcast_block(const Block *block) {
 //Proof of work
 //TODO: Advertencia: puede tener condiciones de carrera
 void *proof_of_work(void *ptr) {
-    pthread_mutex_t * lock = (pthread_mutex_t) ptr;
+    pthread_mutex_t * lock = (pthread_mutex_t*) ptr;
     string hash_hex_str;
     Block block;
     unsigned int mined_blocks = 0;
