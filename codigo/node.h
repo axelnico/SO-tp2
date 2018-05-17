@@ -2,6 +2,7 @@
 #define NODE_H
 
 #include <mpi.h>
+#include <pthread.h>
 #include "block.h"
 
 #define TAG_NEW_BLOCK 10
