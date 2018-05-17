@@ -19,7 +19,6 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
 
     //TODO: Enviar mensaje TAG_CHAIN_HASH
 
-
     Block *blockchain = new Block[VALIDATION_BLOCKS];
 
     //TODO: Recibir mensaje TAG_CHAIN_RESPONSE
@@ -47,7 +46,6 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //entonces lo agrego como nuevo último.
         if (rBlock->index == 1 && last_block_in_chain->index == 0) {
             *last_block_in_chain = *rBlock;
-            total_nodes++;
             printf("[%d] Agregado a la lista bloque con index %d enviado por %d \n", mpi_rank, rBlock->index,status->MPI_SOURCE);
             return true;
         }
@@ -58,7 +56,6 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //entonces lo agrego como nuevo último.
         if ((rBlock->index == last_block_in_chain->index + 1) && rBlock->previous_block_hash == last_block_in_chain->block_hash) {
             *last_block_in_chain = *rBlock;
-            total_nodes++;
             printf("[%d] Agregado a la lista bloque con index %d enviado por %d \n", mpi_rank, rBlock->index,status->MPI_SOURCE);
             return true;
         }
@@ -107,7 +104,18 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
 //Envia el bloque minado a todos los nodos
 void broadcast_block(const Block *block) {
     //No enviar a mí mismo
-    //TODO: Completar
+    for (int destination = 0; destination < total_nodes; ++destination) {
+        if (destination != mpi_rank) {
+            MPI_Datatype datatype = new MPI_Datatype;
+            block->define_block_data_type_for_MPI(datatype);
+            MPI_Send((void*) block,
+                1,
+                datatype,
+                destination,
+                TAG_NEW_BLOCK,
+                MPI_COMM_WORLD);
+        }
+    }
 }
 
 //Proof of work
@@ -188,13 +196,27 @@ int node() {
     while (true) {
         pthread_mutex_lock(&lock);
 
+        Block rBlock = new Block;
+        MPI_Datatype datatype = new MPI_Datatype;
+        rBlock->define_block_data_type_for_MPI(datatype);
+        MPI_Status status = new MPI_Status;
         //TODO: Recibir mensajes de otros nodos
+        MPI_Recv((void*) rBlock,
+                1,
+                datatype,
+                MPI_ANY_SOURCE,
+                MPI_ANY_TAG,
+                MPI_COMM_WORLD,
+                MPI_Status* status);
 
         //TODO: Si es un mensaje de nuevo bloque, llamar a la función
-        // validate_block_for_chain con el bloque recibido y el estado de MPI
+        if (status->MPI_TAG == TAG_NEW_BLOCK)
+            validate_block_for_chain(rBlock, status);
 
         //TODO: Si es un mensaje de pedido de cadena,
-        //responderlo enviando los bloques correspondientes
+        if (status->MPI_TAG == TAG_CHAIN_HASH)
+            // recorrer la blockchain para atras mandando los hashes
+            a();
 
         pthread_mutex_unlock(&lock);
     }
