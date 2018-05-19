@@ -1,5 +1,5 @@
 
 .idea/
 codigo/blockchain
-codigo/blockchain.dSYM/Contents/Info.plist
-codigo/blockchain.dSYM/Contents/Resources/DWARF/blockchain
+codigo/blockchain.dSYM/
+.DS_STORE

@@ -20,28 +20,68 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
     //TODO: Enviar mensaje TAG_CHAIN_HASH
 
     Block *blockchain = new Block[VALIDATION_BLOCKS];
-
-    MPI_Send((void*) *rBlock, 1, datatype, status->MPI_SOURCE, TAG_CHAIN_HASH, MPI_COMM_WORLD);
+    MPI_Datatype datatype;
+    define_block_data_type_for_MPI(&datatype);
+    MPI_Send((void*) rBlock->block_hash, 1, datatype, status->MPI_SOURCE, TAG_CHAIN_HASH, MPI_COMM_WORLD);
 
     //TODO: Recibir mensaje TAG_CHAIN_RESPONSE
-    MPI_Status *status = new MPI_Status;
-    MPI_Recv((void*) *blockchain,
-             1,
-             datatype,
-             status->MPI_SOURCE,
-             TAG_CHAIN_RESPONSE,
-             MPI_COMM_WORLD,
-             status);
+    MPI_Status *receivedStatus = new MPI_Status;
+    for (int blockIndex = 0; blockIndex < VALIDATION_BLOCKS; ++blockIndex) {
+        MPI_Recv((void*) &blockchain[blockIndex],
+                 1,
+                 datatype,
+                 status->MPI_SOURCE,
+                 TAG_CHAIN_RESPONSE,
+                 MPI_COMM_WORLD,
+                 receivedStatus);
+    }
 
     //TODO: Verificar que los bloques recibidos
     //sean válidos y se puedan acoplar a la cadena
-//    if (valid && cambiamos cadena) {
-//
-//        delete []blockchain;
-//        return true;
-//    }
 
-    delete[]blockchain;
+    // la mierda de blockchain viene al revés de como se agregan los bloques en la blockchain real
+    bool should_migrate = true;
+    int rblock_index = rBlock->index; // bloque mas reciente encontrado por el otro
+    int previous_block_hash = rBlock->previous_block_hash;
+    int known_block_index = -1;
+    // El primer bloque de la lista contiene el hash pedido
+    if (blockchain[0].block_hash != rBlock->block_hash) {
+        delete []blockchain;
+        return false;
+    }
+    string validation_hash;
+    block_to_hash(rBlock,validation_hash);
+    if (current.block_hash != validation_hash) {
+        delete []blockchain;
+        return false;
+    }
+    for (int i = 0; i < VALIDATION_BLOCKS; ++i) {
+        Block current = blockchain[i];
+        // El hash del bloque recibido es igual al calculado por la función block_to_hash.
+        // chequeo que el bloque actual tiene el index que el bloque original - i.
+        // i empieza en 0 asi que el primer current.index deberia ser igual al indice del bloque pedido.
+        // Cada bloque siguiente de la lista, contiene el índice anterior al actual elemento.
+        if (current.index != (rblock_index - i)) {
+            should_migrate = false;
+            break;
+        } else {
+            // Cada bloque siguiente de la lista, contiene el hash definido en previous_block_hash del actual elemento.
+            if (current.index < rblock_index && current.block_hash != blockchain[i-1].previous_block_hash) {
+                should_migrate = false;
+                break;
+            }
+        }
+        if (current.block_hash == validation_hash && exists_hash_in_my_blockchain(current.block_hash)) {
+
+        }
+        previous_block_hash = current.previous_block_hash;
+    }
+
+        delete []blockchain;
+        return true;
+    }
+
+    delete []blockchain;
     return false;
 }
 
@@ -119,7 +159,7 @@ void broadcast_block(const Block *block) {
     for (int destination = mpi_rank+1; destination < total_nodes; ++destination) {
         MPI_Datatype datatype;
         define_block_data_type_for_MPI(&datatype);
-        MPI_Send((void*) *block,
+        MPI_Send((void*) block,
             1,
             datatype,
             destination,
@@ -130,7 +170,7 @@ void broadcast_block(const Block *block) {
     {
         MPI_Datatype datatype;
         define_block_data_type_for_MPI(&datatype);
-        MPI_Send((void*) *block,
+        MPI_Send((void*) block,
             1,
             datatype,
             destination,
@@ -219,7 +259,7 @@ int node() {
         MPI_Datatype datatype;
         define_block_data_type_for_MPI(&datatype);
         MPI_Status *status = new MPI_Status;
-        MPI_Recv((void*) *rBlock,
+        MPI_Recv((void*) rBlock,
                 1,
                 datatype,
                 MPI_ANY_SOURCE,
