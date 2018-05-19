@@ -21,13 +21,25 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
 
     Block *blockchain = new Block[VALIDATION_BLOCKS];
 
+    MPI_Send((void*) *rBlock, 1, datatype, status->MPI_SOURCE, TAG_CHAIN_HASH, MPI_COMM_WORLD);
+
     //TODO: Recibir mensaje TAG_CHAIN_RESPONSE
+    MPI_Status *status = new MPI_Status;
+    MPI_Recv((void*) *blockchain,
+             1,
+             datatype,
+             status->MPI_SOURCE,
+             TAG_CHAIN_RESPONSE,
+             MPI_COMM_WORLD,
+             status);
 
     //TODO: Verificar que los bloques recibidos
     //sean válidos y se puedan acoplar a la cadena
-    //delete []blockchain;
-    //return true;
-
+//    if (valid && cambiamos cadena) {
+//
+//        delete []blockchain;
+//        return true;
+//    }
 
     delete[]blockchain;
     return false;
@@ -107,7 +119,7 @@ void broadcast_block(const Block *block) {
     for (int destination = mpi_rank+1; destination < total_nodes; ++destination) {
         MPI_Datatype datatype;
         define_block_data_type_for_MPI(&datatype);
-        MPI_Send((void*) block,
+        MPI_Send((void*) *block,
             1,
             datatype,
             destination,
@@ -118,7 +130,7 @@ void broadcast_block(const Block *block) {
     {
         MPI_Datatype datatype;
         define_block_data_type_for_MPI(&datatype);
-        MPI_Send((void*) block,
+        MPI_Send((void*) *block,
             1,
             datatype,
             destination,
@@ -203,14 +215,11 @@ int node() {
     pthread_create(&thread, NULL, proof_of_work, &lock);
 
     while (true) {
-        pthread_mutex_lock(&lock);
-
         Block *rBlock = new Block;
         MPI_Datatype datatype;
         define_block_data_type_for_MPI(&datatype);
         MPI_Status *status = new MPI_Status;
-        //TODO: Recibir mensajes de otros nodos
-        MPI_Recv((void*) rBlock,
+        MPI_Recv((void*) *rBlock,
                 1,
                 datatype,
                 MPI_ANY_SOURCE,
@@ -218,15 +227,16 @@ int node() {
                 MPI_COMM_WORLD,
                 status);
 
+        pthread_mutex_lock(&lock);
         //TODO: Si es un mensaje de nuevo bloque, llamar a la función
-        if (status->MPI_TAG == TAG_NEW_BLOCK)
+        if (status->MPI_TAG == TAG_NEW_BLOCK) {
             validate_block_for_chain(rBlock, status);
+        }
 
         //TODO: Si es un mensaje de pedido de cadena,
-        if (status->MPI_TAG == TAG_CHAIN_HASH)
+        if (status->MPI_TAG == TAG_CHAIN_HASH) {
             // recorrer la blockchain para atras mandando los hashes
-        
-
+        }
         pthread_mutex_unlock(&lock);
     }
 
