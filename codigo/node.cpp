@@ -287,6 +287,7 @@ int node() {
                      &status
             );
             validate_block_for_chain(rBlock, &status);
+            delete rBlock;
         }
 
         //Si es un mensaje de pedido de cadena,
