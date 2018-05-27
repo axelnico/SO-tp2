@@ -17,14 +17,13 @@ map <string, Block> node_blocks;
 //Si nos separan más de VALIDATION_BLOCKS bloques de distancia entre las cadenas, se descarta por seguridad
 bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
 
-    //TODO: Enviar mensaje TAG_CHAIN_HASH
-
+    //Enviar mensaje TAG_CHAIN_HASH
     Block *blockchain = new Block[VALIDATION_BLOCKS];
     MPI_Datatype datatype;
     define_block_data_type_for_MPI(&datatype);
     MPI_Send((void*) rBlock->block_hash, 1, datatype, status->MPI_SOURCE, TAG_CHAIN_HASH, MPI_COMM_WORLD);
 
-    //TODO: Recibir mensaje TAG_CHAIN_RESPONSE
+    //Recibir mensaje TAG_CHAIN_RESPONSE
     MPI_Status *receivedStatus = new MPI_Status;
     for (int blockIndex = 0; blockIndex < VALIDATION_BLOCKS; ++blockIndex) {
         MPI_Recv((void*) &blockchain[blockIndex],
@@ -39,7 +38,7 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
     //TODO: Verificar que los bloques recibidos
     //sean válidos y se puedan acoplar a la cadena
 
-    // la mierda de blockchain viene al revés de como se agregan los bloques en la blockchain real
+    // lo de blockchain viene al revés de como se agregan los bloques en la blockchain real
     bool should_migrate = true;
     int rblock_index = rBlock->index; // bloque mas reciente encontrado por el otro
     int previous_block_hash = rBlock->previous_block_hash;
@@ -75,7 +74,7 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
 
         }
         previous_block_hash = current.previous_block_hash;
-    }
+    
 
         delete []blockchain;
         return true;
@@ -84,6 +83,7 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
     delete []blockchain;
     return false;
 }
+
 
 //Verifica que el bloque tenga que ser incluido en la cadena, y lo agrega si corresponde
 bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
@@ -230,7 +230,6 @@ void *proof_of_work(void *ptr) {
 int node() {
 
     pthread_mutex_t lock;
-
     pthread_mutex_init(&lock, NULL);
 
     //Tomar valor de mpi_rank y de nodos totales
@@ -255,27 +254,37 @@ int node() {
     pthread_create(&thread, NULL, proof_of_work, &lock);
 
     while (true) {
-        Block *rBlock = new Block;
-        MPI_Datatype datatype;
-        define_block_data_type_for_MPI(&datatype);
         MPI_Status *status = new MPI_Status;
-        MPI_Recv((void*) rBlock,
-                1,
-                datatype,
-                MPI_ANY_SOURCE,
-                MPI_ANY_TAG,
-                MPI_COMM_WORLD,
-                status);
-
+        MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, status);
+        
         pthread_mutex_lock(&lock);
-        //TODO: Si es un mensaje de nuevo bloque, llamar a la función
+        //Si es un mensaje de nuevo bloque, llamar a la función
         if (status->MPI_TAG == TAG_NEW_BLOCK) {
+            Block *rBlock = new Block;
+            MPI_Datatype datatype;
+            define_block_data_type_for_MPI(&datatype);
+            MPI_Status *status = new MPI_Status;
+            MPI_Recv((void*) rBlock,
+                        1,
+                        datatype,
+                        MPI_ANY_SOURCE,
+                        TAG_NEW_BLOCK,
+                        MPI_COMM_WORLD,
+                        status->MPI_SOURCE);
             validate_block_for_chain(rBlock, status);
         }
 
         //TODO: Si es un mensaje de pedido de cadena,
         if (status->MPI_TAG == TAG_CHAIN_HASH) {
-            // recorrer la blockchain para atras mandando los hashes
+            string s;
+            MPI_Recv((void*) s,
+                        1,
+                        MPI_CHAR,
+                        MPI_ANY_SOURCE,
+                        TAG_CHAIN_HASH,
+                        MPI_COMM_WORLD,
+                        status->MPI_SOURCE);
+            //TODO: recorrer la blockchain para atras mandando los hashes
         }
         pthread_mutex_unlock(&lock);
     }
