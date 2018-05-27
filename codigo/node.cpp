@@ -33,7 +33,7 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
         delete[] blockchain;
         return false;
     }
-    MPI_Recv((void*) &blockchain[blockCount],
+    MPI_Recv((void*) blockchain,
              blockCount,
              datatype,
              status->MPI_SOURCE,
@@ -291,9 +291,11 @@ int node() {
 
         //Si es un mensaje de pedido de cadena,
         if (status.MPI_TAG == TAG_CHAIN_HASH) {
-            char chain_hash[HASH_SIZE];
+            int chain_hash_size;
+            MPI_Get_count(&status, MPI_CHAR, &chain_hash_size);
+            char chain_hash[chain_hash_size];
             MPI_Recv((void*) chain_hash,
-                     HASH_SIZE,
+                     chain_hash_size,
                      MPI_CHAR,
                      status.MPI_SOURCE,
                      TAG_CHAIN_HASH,
