@@ -201,7 +201,7 @@ void *proof_of_work(void *ptr) {
     string hash_hex_str;
     Block block;
     unsigned int mined_blocks = 0;
-    while (true) {
+    while (last_block_in_chain->index < MAX_BLOCKS) {
 
         block = *last_block_in_chain;
 
@@ -287,6 +287,7 @@ int node() {
                      &status
             );
             validate_block_for_chain(rBlock, &status);
+            delete rBlock;
         }
 
         //Si es un mensaje de pedido de cadena,
