@@ -19,23 +19,21 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
 
     //Enviar mensaje TAG_CHAIN_HASH
     Block *blockchain = new Block[VALIDATION_BLOCKS];
-    MPI_Datatype datatype;
-    define_block_data_type_for_MPI(&datatype);
-    MPI_Send((void*) rBlock->block_hash, 1, datatype, status->MPI_SOURCE, TAG_CHAIN_HASH, MPI_COMM_WORLD);
+    MPI_Send((void*) rBlock->block_hash, 1, *MPI_BLOCK, status->MPI_SOURCE, TAG_CHAIN_HASH, MPI_COMM_WORLD);
 
     //Recibir mensaje TAG_CHAIN_RESPONSE
     MPI_Status probeStatus;
     MPI_Status receivedStatus;
     MPI_Probe(status->MPI_SOURCE, TAG_CHAIN_RESPONSE, MPI_COMM_WORLD, &probeStatus);
     int blockCount;
-    MPI_Get_count(&probeStatus, datatype, &blockCount);
+    MPI_Get_count(&probeStatus, *MPI_BLOCK, &blockCount);
     if (blockCount > VALIDATION_BLOCKS) {
         delete[] blockchain;
         return false;
     }
     MPI_Recv((void*) blockchain,
              blockCount,
-             datatype,
+             *MPI_BLOCK,
              status->MPI_SOURCE,
              TAG_CHAIN_RESPONSE,
              MPI_COMM_WORLD,
@@ -166,11 +164,9 @@ void broadcast_block(const Block *block) {
     //No enviar a mí mismo
     MPI_Request requests[total_nodes-1];
     for (int destination = mpi_rank+1; destination < total_nodes; ++destination) {
-        MPI_Datatype datatype;
-        define_block_data_type_for_MPI(&datatype);
         MPI_Isend((void*) block,
             1,
-            datatype,
+            *MPI_BLOCK,
             destination,
             TAG_NEW_BLOCK,
             MPI_COMM_WORLD,
@@ -179,11 +175,9 @@ void broadcast_block(const Block *block) {
     }
     for (int destination = 0; destination < mpi_rank; ++destination)
     {
-        MPI_Datatype datatype;
-        define_block_data_type_for_MPI(&datatype);
         MPI_Isend((void*) block,
             1,
-            datatype,
+            *MPI_BLOCK,
             destination,
             TAG_NEW_BLOCK,
             MPI_COMM_WORLD,
@@ -276,11 +270,9 @@ int node() {
         //Si es un mensaje de nuevo bloque, llamar a la función
         if (status.MPI_TAG == TAG_NEW_BLOCK) {
             Block *rBlock = new Block;
-            MPI_Datatype datatype;
-            define_block_data_type_for_MPI(&datatype);
             MPI_Recv((void*) rBlock,
                      1,
-                     datatype,
+                     *MPI_BLOCK,
                      status.MPI_SOURCE,
                      TAG_NEW_BLOCK,
                      MPI_COMM_WORLD,
@@ -314,11 +306,9 @@ int node() {
                 blockchain_index--;
             }
             MPI_Request req;
-            MPI_Datatype blockdatatype;
-            define_block_data_type_for_MPI(&blockdatatype);
             MPI_Isend((void*) blockchainFromHash,
                       blockchain_size,
-                      blockdatatype,
+                      *MPI_BLOCK,
                       status.MPI_SOURCE,
                       TAG_CHAIN_RESPONSE,
                       MPI_COMM_WORLD,
