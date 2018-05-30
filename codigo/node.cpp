@@ -13,6 +13,16 @@ int total_nodes, mpi_rank;
 Block *last_block_in_chain;
 map <string, Block> node_blocks;
 
+bool esta_en_blockchain(Block &bloque){
+    string current_hash = last_block_in_chain->block_hash;
+    unsigned int current_index = last_block_in_chain->index;
+    while(current_index > bloque.index){
+        current_hash = node_blocks[current_hash].previous_block_hash;
+        current_index--;
+    }
+    return (current_hash == bloque.block_hash);
+}
+
 //Cuando me llega una cadena adelantada, y tengo que pedir los nodos que me faltan
 //Si nos separan más de VALIDATION_BLOCKS bloques de distancia entre las cadenas, se descarta por seguridad
 bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
@@ -40,11 +50,11 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
              &receivedStatus
     );
 
-    //TODO: Verificar que los bloques recibidos
+    //Verificar que los bloques recibidos
     //sean válidos y se puedan acoplar a la cadena
 
     // lo de blockchain viene al revés de como se agregan los bloques en la blockchain real
-    int rblock_index = rBlock->index; // bloque mas reciente encontrado por el otro
+    unsigned int rblock_index = rBlock->index;
     // El primer bloque de la lista contiene el hash pedido
     if (blockchain[blockCount-1].block_hash != rBlock->block_hash) {
         delete []blockchain;
@@ -61,7 +71,7 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
     for (int i = 0; i < blockCount; ++i) { // current = blockchain[i]
         // verificamos que el hash del bloque es igual al hash de validacion
         string validation_hash;
-        block_to_hash(rBlock,validation_hash);
+        block_to_hash(rBlock, validation_hash);
         if (blockchain[i].block_hash != validation_hash) {
             delete []blockchain;
             return false;
@@ -79,13 +89,15 @@ bool verificar_y_migrar_cadena(const Block *rBlock, const MPI_Status *status) {
             delete []blockchain;
             return false;
         }
-        if (node_blocks.find(blockchain[i].block_hash) == node_blocks.end()) {
-            node_blocks[blockchain[i].block_hash] = blockchain[i];
-        } else {
+        //si pertenece a mi cadena, dejo de buscar
+        if (esta_en_blockchain(blockchain[i])) {
             break;
+        } else {
+            //si no pertenece, sigo recorriendo
+            node_blocks[blockchain[i].block_hash] = blockchain[i];
         }
     }
-    *last_block_in_chain = blockchain[0];
+
     delete []blockchain;
     return true;
 }
@@ -97,7 +109,7 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
 
         //Agrego el bloque al diccionario, aunque no
         //necesariamente eso lo agrega a la cadena
-        node_blocks[string(rBlock->block_hash)] = *rBlock;
+        node_blocks[rBlock->block_hash] = *rBlock;
 
         //Si el índice del bloque recibido es 1
         //y mí último bloque actual tiene índice 0,
@@ -123,16 +135,18 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //pero el bloque anterior apuntado por el recibido no es mí último actual,
         //entonces hay una blockchain más larga que la mía.
         if ((rBlock->index == last_block_in_chain->index + 1) && rBlock->previous_block_hash != last_block_in_chain->block_hash) {
-            printf("[%d] Perdí la carrera por uno (%d) contra %d \n", mpi_rank, rBlock->index, status->MPI_SOURCE);
             bool res = verificar_y_migrar_cadena(rBlock, status);
+            if (res){
+                printf("[%d] Perdí la carrera por uno (%d) contra %d \n", mpi_rank, rBlock->index, status->MPI_SOURCE);
+                *last_block_in_chain = *rBlock;
+            }
             return res;
         }
 
         //Si el índice del bloque recibido es igual al índice de mi último bloque actual,
         //entonces hay dos posibles forks de la blockchain pero mantengo la mía
         if (rBlock->index == last_block_in_chain->index) {
-            printf("[%d] Conflicto suave: Conflicto de branch (%d) contra %d \n", mpi_rank, rBlock->index,
-                   status->MPI_SOURCE);
+            printf("[%d] Conflicto suave: Conflicto de branch (%d) contra %d \n", mpi_rank, rBlock->index, status->MPI_SOURCE);
             return false;
         }
 
@@ -147,8 +161,11 @@ bool validate_block_for_chain(const Block *rBlock, const MPI_Status *status) {
         //Si el índice del bloque recibido está más de una posición adelantada a mi último bloque actual,
         //entonces me conviene abandonar mi blockchain actual
         if (rBlock->index > last_block_in_chain->index+1) {
-            printf("[%d] Perdí la carrera por varios contra %d \n", mpi_rank, status->MPI_SOURCE);
             bool res = verificar_y_migrar_cadena(rBlock,status);
+            if (res){
+                *last_block_in_chain = *rBlock;
+                printf("[%d] Perdí la carrera por varios contra %d \n", mpi_rank, status->MPI_SOURCE);
+            }
             return res;
         }
 
@@ -222,7 +239,7 @@ void *proof_of_work(void *ptr) {
                 *last_block_in_chain = block;
                 strcpy(last_block_in_chain->block_hash, hash_hex_str.c_str());
                 node_blocks[hash_hex_str] = *last_block_in_chain;
-                printf("[%d] Agregué un producido con index %d \n", mpi_rank, last_block_in_chain->index);
+                printf("[%d] Agregué un bloque con index %d \n", mpi_rank, last_block_in_chain->index);
 
                 //Mientras comunico, no responder mensajes de nuevos nodos
                 broadcast_block(last_block_in_chain);
@@ -296,7 +313,7 @@ int node() {
                      &status
             );
             //recorrer la blockchain para atras mandando los hashes
-            Block * current = &node_blocks[string(chain_hash)];
+            Block * current = &node_blocks[chain_hash];
             int blockchain_size = current->index > VALIDATION_BLOCKS ? VALIDATION_BLOCKS : current->index;
             Block * blockchainFromHash = new Block[blockchain_size];
             int blockchain_index = blockchain_size-1;
