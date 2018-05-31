@@ -140,8 +140,9 @@ La demora en la entrega de paquetes puede producir dos bifuraciones como lo menc
 
 \subsection{¿Cómo afecta el aumento o la disminución de la dificultad del Proof-of-Work a los conflictos entre nodos y a la convergencia?}
 
-
-Se agregó el archivo test-1.cpp el cual incluye tests particulares sobre ConcurrentHashMap. El archivo tiene tres partes en el cual se prueban las funciones member,addAndInc y maximum del ConcurrentHashMap, las cuales para poder ejecutarse prueban también el constructor del mismo. Para poder realizar los tests fue necesario agregar funciones auxiliares que se usan para este fin las cuales son add, Inc y count_word. Estas funciones fueron agregadas para testear member,addAndInc y maximum sin asumir que las demas funcionan excepto el maximum. Los tests se desarrollaron de manera incremental empezando con member, luego una vez que se testeo correctamente member, se testeó addAndInc y finalmente maximum.
-
+La variación de la dificultad de \textit{Proof-of-Work} está directamente relacionada con la convergencia del proceso de minar bloques, e inversamente con los conflictos producidos entre los nodos al competir por agregar nodos propios a la cadena. Es decir, a mayor dificultad, mayor el tiempo total del proceso y menor la cantidad de conflictos entre nodos.
+\\
+Al aumentar dicha dificultad, observamos que los procesos tardan más en encontrar un hash que cumpla las condiciones de validez, haciendo menos probable que dos nodos encuentren un hash para un nodo de mismo índice.
+Todo lo contrario sucede si se disminuye la dificultad; el proceso tarda menos en llegar al tamaño máximo de la cadena y 
 
 \end{document}
