@@ -131,12 +131,12 @@
 \section{Analisis del protocolo}
 \subsection{¿Puede este protocolo producir dos o más blockchains que nunca converjan?}
 
-EL protocolo puede producir dos o más blockchains que nunca converjan. Si se tienen dos nodos A y B que cuando B comunica a A que encontró un bloque nuevo, y si A, antes de recibir el mensaje de B, encontró un bloque nuevo con el mismo índice que el nuevo bloque de B, entonces cuando A reciba el mesaje de B, va a descartar su bloque porque va a apostar por su propia cadena. Este esquema se puede repetir una cantidad de veces indeterminada generando dos bifurcaciones que nunca converjen.
+EL protocolo puede producir dos o más blockchains que nunca converjan. Si se tienen dos nodos A y B que cuando B comunica a A que encontró un bloque nuevo, y si A, antes de recibir el mensaje de B, encontró un bloque nuevo con el mismo índice que el nuevo bloque de B, entonces cuando A reciba el mesaje de B, va a descartar su bloque porque va a apostar por su propia cadena. Este esquema se puede repetir una cantidad de veces indeterminada generando dos bifurcaciones que nunca convergen.
 
 
 \subsection{¿Cómo afecta la demora o la pérdida en la entrega de paquetes al protocolo?}
 
-La demora en la entrega de paquetes puede producir dos bifuraciones como lo mencionado en la pregunta anterior. La pérdida de mensajes puede producir que un nodo quede lo suficientemente desactualizado como para que el indice de su último bloque esté a una distancia mayor que la máxima diferencia tolerada de bloques generando nuevamente una bifurcación que podría no converjer.  
+La demora en la entrega de paquetes puede producir dos bifuraciones como lo mencionado en la pregunta anterior. La pérdida de mensajes puede producir que un nodo quede lo suficientemente desactualizado como para que el indice de su último bloque esté a una distancia mayor que la máxima diferencia tolerada de bloques generando nuevamente una bifurcación que podría no converger.  
 
 \subsection{¿Cómo afecta el aumento o la disminución de la dificultad del Proof-of-Work a los conflictos entre nodos y a la convergencia?}
 
