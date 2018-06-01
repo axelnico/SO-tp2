@@ -288,7 +288,7 @@ void *proof_of_work(void *ptr) {
     broadcast_end();
     termine_minar.store(true);
     pthread_mutex_unlock(lock);
-    printf("[%d] LLegue hasta hasta el maximo. \n",mpi_rank);
+    printf("[%d] Termino de minar. \n",mpi_rank);
     return NULL;
 }
 
@@ -321,12 +321,10 @@ int node() {
     pthread_create(&thread, NULL, proof_of_work, &lock);
     int finalized_nodes = 0;
 
-    while (finalized_nodes < total_nodes) {
+    while (finalized_nodes < total_nodes-1) {
         MPI_Status status;
-        printf("Antes del proba %d\n",mpi_rank );
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-        printf("Despues del proba %d\n",mpi_rank );
         pthread_mutex_lock(&lock);
         //Si es un mensaje de nuevo bloque, llamar a la función
         if (status.MPI_TAG == TAG_NEW_BLOCK) {
@@ -340,10 +338,6 @@ int node() {
                      &status
             );
             validate_block_for_chain(rBlock, &status);
-            //if(last_block_in_chain->index >= MAX_BLOCKS){
-            //    broadcast_end();
-            //}
-            //printf("Recibi del nodo %d el bloque con indice %d\n",status.MPI_SOURCE ,rBlock->index);
             delete rBlock;
         }
 
