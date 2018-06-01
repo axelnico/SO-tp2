@@ -12,6 +12,7 @@
 int total_nodes, mpi_rank;
 Block *last_block_in_chain;
 map <string, Block> node_blocks;
+atomic<bool> termine_minar;
 
 bool esta_en_blockchain(Block &bloque){
     string current_hash = (string)last_block_in_chain->block_hash;
@@ -209,6 +210,37 @@ void broadcast_block(const Block *block) {
     MPI_Waitall(total_nodes-1, requests, statuses);
 }
 
+//Envia el mensaje de finalizacion a todos los nodos
+void broadcast_end() {
+    //No enviar a mí mismo
+    MPI_Request requests[total_nodes-1];
+    for (int destination = mpi_rank+1; destination < total_nodes; ++destination) {
+        MPI_Isend(NULL,
+            0,
+            MPI_CHAR,
+            destination,
+            TAG_END,
+            MPI_COMM_WORLD,
+            &requests[destination-1]
+        );
+        printf("[%d] Envio mensaje fin bloque al nodo %d \n", mpi_rank, destination);
+    }
+    for (int destination = 0; destination < mpi_rank; ++destination)
+    {
+        MPI_Isend(NULL,
+            0,
+            MPI_CHAR,
+            destination,
+            TAG_END,
+            MPI_COMM_WORLD,
+            &requests[destination]
+        );
+        printf("[%d] Envio mensaje fin bloque al nodo %d \n", mpi_rank, destination);
+    }
+    MPI_Status statuses[total_nodes-1];
+    MPI_Waitall(total_nodes-1, requests, statuses);
+}
+
 //Proof of work
 //Advertencia: puede tener condiciones de carrera
 void *proof_of_work(void *ptr) {
@@ -252,7 +284,11 @@ void *proof_of_work(void *ptr) {
         }
 
     }
-
+    pthread_mutex_lock(lock);
+    broadcast_end();
+    termine_minar.store(true);
+    pthread_mutex_unlock(lock);
+    printf("[%d] LLegue hasta hasta el maximo. \n",mpi_rank);
     return NULL;
 }
 
@@ -261,6 +297,7 @@ int node() {
 
     pthread_mutex_t lock;
     pthread_mutex_init(&lock, NULL);
+    termine_minar.store(false);
 
     //Tomar valor de mpi_rank y de nodos totales
     MPI_Comm_size(MPI_COMM_WORLD, &total_nodes);
@@ -273,7 +310,7 @@ int node() {
     last_block_in_chain = new Block;
 
     //Inicializo el primer bloque
-    last_block_in_chain->index = 0;
+    last_block_in_chain->index = 1;
     last_block_in_chain->node_owner_number = mpi_rank;
     last_block_in_chain->difficulty = DEFAULT_DIFFICULTY;
     last_block_in_chain->created_at = static_cast<unsigned long int> (time(NULL));
@@ -282,11 +319,14 @@ int node() {
     //Crear thread para minar
     pthread_t thread;
     pthread_create(&thread, NULL, proof_of_work, &lock);
+    int finalized_nodes = 0;
 
-    while (true) {
+    while (finalized_nodes < total_nodes) {
         MPI_Status status;
+        printf("Antes del proba %d\n",mpi_rank );
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
+        printf("Despues del proba %d\n",mpi_rank );
         pthread_mutex_lock(&lock);
         //Si es un mensaje de nuevo bloque, llamar a la función
         if (status.MPI_TAG == TAG_NEW_BLOCK) {
@@ -300,6 +340,9 @@ int node() {
                      &status
             );
             validate_block_for_chain(rBlock, &status);
+            //if(last_block_in_chain->index >= MAX_BLOCKS){
+            //    broadcast_end();
+            //}
             //printf("Recibi del nodo %d el bloque con indice %d\n",status.MPI_SOURCE ,rBlock->index);
             delete rBlock;
         }
@@ -340,10 +383,30 @@ int node() {
             MPI_Wait(&req, &waitStatus);
             delete[] blockchainFromHash;
         }
+
+
+        //Si es un mensaje de finalizacion,
+        if (status.MPI_TAG == TAG_END) {
+            char a;
+            MPI_Recv((void*)&a,
+                     0,
+                     MPI_CHAR,
+                     status.MPI_SOURCE,
+                     TAG_END,
+                     MPI_COMM_WORLD,
+                     &status
+            );
+            printf("[%d] Recibi mensaje de finalizacion de %d. \n",mpi_rank,status.MPI_SOURCE);
+            finalized_nodes++;
+        }
+
         pthread_mutex_unlock(&lock);
 
     }
 
+    while((termine_minar.load() == false)){}
+
+    printf("[%d] Termine. Ultimo bloque: %d \n",mpi_rank,last_block_in_chain->index);
     delete last_block_in_chain;
     return 0;
 }
