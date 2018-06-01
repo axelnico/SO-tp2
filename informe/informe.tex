@@ -136,13 +136,17 @@ EL protocolo puede producir dos o más blockchains que nunca converjan. Si se ti
 
 \subsection{¿Cómo afecta la demora o la pérdida en la entrega de paquetes al protocolo?}
 
-La demora en la entrega de paquetes puede producir dos bifuraciones como lo mencionado en la pregunta anterior. La pérdida de mensajes puede producir que un nodo quede lo suficientemente desactualizado como para que el indice de su último nodo esté a una distancia mayor que la máxima diferencia tolerada de bloques generando nuevamente una bifurcación que podría no converjer.  
+La demora en la entrega de paquetes puede producir dos bifuraciones como lo mencionado en la pregunta anterior. La pérdida de mensajes puede producir que un nodo quede lo suficientemente desactualizado como para que el indice de su último bloque esté a una distancia mayor que la máxima diferencia tolerada de bloques generando nuevamente una bifurcación que podría no converjer.  
 
 \subsection{¿Cómo afecta el aumento o la disminución de la dificultad del Proof-of-Work a los conflictos entre nodos y a la convergencia?}
 
-La variación de la dificultad de \textit{Proof-of-Work} está directamente relacionada con la convergencia del proceso de minar bloques, e inversamente con los conflictos producidos entre los nodos al competir por agregar nodos propios a la cadena. Es decir, a mayor dificultad, mayor el tiempo total del proceso y menor la cantidad de conflictos entre nodos.
+La variación de la dificultad de \textit{Proof-of-Work} está directamente relacionada con la convergencia del proceso de minar bloques, e inversamente con los conflictos producidos entre los nodos al competir por agregar bloques propios a la cadena. Es decir, a mayor dificultad, mayor el tiempo total del proceso y menor la cantidad de conflictos entre nodos.
 \\
 Al aumentar dicha dificultad, observamos que los procesos tardan más en encontrar un hash que cumpla las condiciones de validez, haciendo menos probable que dos nodos encuentren un hash para un bloque de mismo índice.
-Todo lo contrario sucede si se disminuye la dificultad; el proceso tarda menos en llegar al tamaño máximo de la cadena y 
+Todo lo contrario sucede si se disminuye la dificultad; el proceso tarda menos en llegar al tamaño máximo de la cadena y se producen más conflictos.
+
+Para mostrar esto, se realizaron 40 ejecuciones con dificultad 8 y 15 (20 cada una), donde se buscaba alcanzar los 200 bloques en la cadena y la diferencia máxima aceptada entre cadenas era de 5 bloques. Los resultados obtenidos del experimento, se volcaron en el siguiente gráfico, el cual muestra la cantidad de conflictos promedio para cada dificultad.
+
+\includegraphics[scale=0.35]{imagenes/conflictos-promedio.jpeg}
 
 \end{document}
